@@ -543,7 +543,10 @@ function setShuffle(on) {
   }
   updateButtons(); lsSet('shuffle', on ? '1' : '0');
 }
-function setRepeat(m) { repeatMode = m; updateButtons(); lsSet('repeat', String(m)); }
+function setRepeat(m) {
+  repeatMode = m; updateButtons(); lsSet('repeat', String(m));
+  toast(m === 2 ? 'Повтор: один трек' : m === 1 ? 'Повтор: весь список' : 'Повтор выключен', 1800);
+}
 
 function updateButtons() {
   const playing = !audio.paused;
@@ -553,6 +556,7 @@ function updateButtons() {
   $('#bShuffle').classList.toggle('on', shuffleOn);
   $('#bRepeat').classList.toggle('on', repeatMode > 0);
   $('#bRepeat').innerHTML = repeatMode === 2 ? ICON.repeat1 : ICON.repeat;
+  audio.loop = repeatMode === 2; // нативный повтор одного трека: надёжно работает и при заблокированном экране
   if ('mediaSession' in navigator) navigator.mediaSession.playbackState = playing ? 'playing' : 'paused';
 }
 function updatePosition(force) {
