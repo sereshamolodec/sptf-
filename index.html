@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b0b0f">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Плеер">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<title>Мой плеер</title>
+<style>
+:root{--bg:#0b0b0f;--card:#16161c;--card2:#1f1f28;--text:#f5f5f7;--muted:#9c9ca8;--accent:#a78bfa;--accent2:#f472b6;--danger:#ff6b6b;--sat:env(safe-area-inset-top);--sab:env(safe-area-inset-bottom)}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--text);font:16px/1.35 -apple-system,BlinkMacSystemFont,"SF Pro Text",system-ui,sans-serif}
+body{overscroll-behavior:none;-webkit-user-select:none;user-select:none}
+button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer}
+svg{fill:currentColor;display:block}
+#app{max-width:720px;margin:0 auto;padding:calc(var(--sat) + 14px) 16px calc(110px + var(--sab))}
+.title-row{display:flex;align-items:center;justify-content:space-between;gap:12px}
+h1{margin:0;font-size:28px;letter-spacing:-.5px}
+.muted{color:var(--muted)}
+#stats{font-size:13px;margin:2px 0 14px}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:10px 16px;border-radius:999px;font-weight:600;font-size:15px;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#12091f;cursor:pointer}
+.pill.ghost{background:var(--card2);color:var(--text)}
+.toolbar{display:flex;gap:8px;margin-bottom:10px}
+input[type=search],select{background:var(--card);color:var(--text);border:1px solid #2a2a35;border-radius:12px;padding:10px 12px;font:inherit;outline:none;-webkit-user-select:text;user-select:text}
+input[type=search]{flex:1;min-width:0}
+select{max-width:42%}
+.actions{display:flex;gap:8px;margin-bottom:8px}
+.actions .pill{flex:1;justify-content:center}
+.row{display:flex;align-items:center;gap:12px;padding:8px 4px;border-radius:12px}
+.row:active{background:var(--card)}
+.row.cur .t{color:var(--accent)}
+.th{width:48px;height:48px;border-radius:8px;flex:none;background:var(--card2);display:grid;place-items:center;overflow:hidden;color:var(--muted)}
+.th img{width:100%;height:100%;object-fit:cover}
+.th svg{width:22px;height:22px}
+.meta{flex:1;min-width:0}
+.t{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.a{font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dur{font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+.more{width:36px;height:36px;display:grid;place-items:center;color:var(--muted);border-radius:50%}
+.more svg{width:20px;height:20px}
+#empty{text-align:center;padding:56px 16px;color:var(--muted)}
+#empty .big{width:88px;height:88px;margin:0 auto 18px;border-radius:24px;display:grid;place-items:center;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#12091f}
+#empty .big svg{width:44px;height:44px}
+#empty h2{color:var(--text);margin:0 0 6px}
+#empty .pill{margin-top:18px}
+/* mini player */
+#mini{position:fixed;left:0;right:0;bottom:0;z-index:20;display:none;padding:0 10px calc(var(--sab) + 8px)}
+#mini.show{display:block}
+.mini-in{max-width:700px;margin:0 auto;background:rgba(31,31,40,.92);-webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px);border-radius:16px;padding:8px 10px;display:flex;align-items:center;gap:10px;position:relative;overflow:hidden;box-shadow:0 8px 30px rgba(0,0,0,.5)}
+.mini-in .th{width:44px;height:44px}
+.mini-prog{position:absolute;left:0;bottom:0;height:2px;width:0;background:linear-gradient(90deg,var(--accent),var(--accent2))}
+.ibtn{width:44px;height:44px;display:grid;place-items:center;border-radius:50%}
+.ibtn svg{width:26px;height:26px}
+/* full player */
+#full{position:fixed;inset:0;z-index:30;background:linear-gradient(180deg,#2a1d4a 0%,#0b0b0f 70%);transform:translateY(100%);transition:transform .3s cubic-bezier(.2,.8,.2,1);display:flex;flex-direction:column;padding:calc(var(--sat) + 10px) 24px calc(var(--sab) + 24px);overflow:hidden}
+#full.open{transform:none}
+.fclose{align-self:flex-start;width:44px;height:44px;display:grid;place-items:center;margin-left:-10px}
+.fclose svg{width:28px;height:28px}
+.cover{width:min(100%,46vh);aspect-ratio:1;margin:auto;border-radius:18px;background:var(--card2);display:grid;place-items:center;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.55);color:var(--muted)}
+.cover img{width:100%;height:100%;object-fit:cover}
+.cover svg{width:30%;height:30%}
+.finfo{margin-top:18px}
+.finfo .t{font-size:22px}
+.finfo .a{font-size:16px}
+.seek{margin-top:14px}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:28px;background:transparent;margin:0;--p:0%}
+input[type=range]::-webkit-slider-runnable-track{height:4px;border-radius:2px;background:linear-gradient(90deg,var(--accent) var(--p),#3a3a46 var(--p))}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:#fff;margin-top:-6px}
+.times{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums;margin-top:-2px}
+.ctrls{display:flex;align-items:center;justify-content:space-between;margin-top:10px}
+.ctrls .ibtn{width:56px;height:56px}
+.ctrls .ibtn svg{width:30px;height:30px}
+.ctrls .main{width:72px;height:72px;background:#fff;color:#111}
+.ctrls .main svg{width:36px;height:36px}
+.ctrls .on{color:var(--accent)}
+.ctrls .sm svg{width:24px;height:24px}
+/* sheet */
+#sheetbg{position:fixed;inset:0;z-index:40;background:rgba(0,0,0,.55);display:none}
+#sheetbg.show{display:block}
+#sheet{position:absolute;left:0;right:0;bottom:0;background:var(--card);border-radius:20px 20px 0 0;padding:16px 16px calc(var(--sab) + 16px);max-width:720px;margin:0 auto}
+#sheet .sh-title{font-weight:600;margin-bottom:2px}
+#sheet .sh-sub{font-size:13px;color:var(--muted);margin-bottom:10px}
+#sheet button{display:block;width:100%;text-align:left;padding:14px 8px;border-top:1px solid #26262f;font-size:17px}
+#sheet button.danger{color:var(--danger)}
+/* toast / tip */
+#toast{position:fixed;left:50%;bottom:calc(var(--sab) + 96px);transform:translate(-50%,200%);z-index:60;background:#2b2b36;padding:10px 16px;border-radius:999px;font-size:14px;transition:transform .25s;max-width:90vw;text-align:center;box-shadow:0 8px 24px rgba(0,0,0,.5)}
+#toast.show{transform:translate(-50%,0)}
+#tip{background:var(--card2);border-radius:14px;padding:12px 14px;margin-bottom:12px;font-size:14px;display:none;gap:10px;align-items:flex-start}
+#tip.show{display:flex}
+#tip b{color:var(--accent)}
+#tip button{margin-left:auto;color:var(--muted);font-size:20px;line-height:1}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="title-row">
+    <h1>Моя музыка</h1>
+    <label class="pill" for="file"><span id="plus">＋</span> Добавить</label>
+    <input id="file" type="file" accept="audio/*,.mp3,.m4a,.aac,.flac,.wav,.aiff,.caf" multiple hidden>
+  </div>
+  <div id="stats" class="muted"></div>
+  <div id="tip"><div>Чтобы музыка не пропадала и приложение работало как настоящее: нажми <b>«Поделиться»</b> в Safari → <b>«На экран “Домой”»</b> и открывай плеер с иконки.</div><button id="tipx" aria-label="Закрыть">×</button></div>
+  <div class="toolbar">
+    <input id="q" type="search" placeholder="Поиск" autocomplete="off">
+    <select id="sort"><option value="added">Новые</option><option value="title">По названию</option><option value="artist">По исполнителю</option></select>
+  </div>
+  <div class="actions">
+    <button class="pill" id="playAll"></button>
+    <button class="pill ghost" id="shuffleAll"></button>
+  </div>
+  <div id="list"></div>
+  <div id="empty" style="display:none">
+    <div class="big" id="emptyIcon"></div>
+    <h2>Пока пусто</h2>
+    <div>Добавь музыку из приложения «Файлы» на iPhone.<br>Треки сохранятся в памяти телефона и будут играть без интернета.</div>
+    <label class="pill" for="file">＋ Добавить музыку</label>
+  </div>
+</div>
+
+<div id="mini">
+  <div class="mini-in">
+    <div class="th" id="miniTh"></div>
+    <div class="meta" id="miniOpen"><div class="t" id="miniT"></div><div class="a" id="miniA"></div></div>
+    <button class="ibtn" id="miniPlay" aria-label="Пауза/воспроизведение"></button>
+    <button class="ibtn" id="miniNext" aria-label="Следующий"></button>
+    <div class="mini-prog" id="miniProg"></div>
+  </div>
+</div>
+
+<div id="full">
+  <button class="fclose" id="fclose" aria-label="Свернуть"></button>
+  <div class="cover" id="cover"></div>
+  <div class="finfo"><div class="t" id="fT"></div><div class="a" id="fA"></div></div>
+  <div class="seek">
+    <input type="range" id="seek" min="0" max="1000" value="0">
+    <div class="times"><span id="tCur">0:00</span><span id="tDur">0:00</span></div>
+  </div>
+  <div class="ctrls">
+    <button class="ibtn sm" id="bShuffle" aria-label="Перемешать"></button>
+    <button class="ibtn" id="bPrev" aria-label="Предыдущий"></button>
+    <button class="ibtn main" id="bPlay" aria-label="Пауза/воспроизведение"></button>
+    <button class="ibtn" id="bNext" aria-label="Следующий"></button>
+    <button class="ibtn sm" id="bRepeat" aria-label="Повтор"></button>
+  </div>
+</div>
+
+<div id="sheetbg"><div id="sheet"></div></div>
+<div id="toast"></div>
+
+<script>
+'use strict';
+const $ = s => document.querySelector(s);
+const ICON = {
+  play:'<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>',
+  pause:'<svg viewBox="0 0 24 24"><path d="M6 5h4v14H6zM14 5h4v14h-4z"/></svg>',
+  next:'<svg viewBox="0 0 24 24"><path d="M6 6l9 6-9 6zM17 6h2v12h-2z"/></svg>',
+  prev:'<svg viewBox="0 0 24 24"><path d="M18 6v12l-9-6zM5 6h2v12H5z"/></svg>',
+  shuffle:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5M4 20L21 3M21 16v5h-5M15 15l6 6M4 4l5 5"/></svg>',
+  repeat:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 2l4 4-4 4M3 11V9a3 3 0 013-3h15M7 22l-4-4 4-4M21 13v2a3 3 0 01-3 3H3"/></svg>',
+  repeat1:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 2l4 4-4 4M3 11V9a3 3 0 013-3h15M7 22l-4-4 4-4M21 13v2a3 3 0 01-3 3H3"/><text x="12" y="15.5" font-size="8" text-anchor="middle" fill="currentColor" stroke="none" font-weight="700">1</text></svg>',
+  down:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 9l7 7 7-7"/></svg>',
+  more:'<svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>',
+  note:'<svg viewBox="0 0 24 24"><path d="M12 3v10.55A4 4 0 1014 17V7h4V3z"/></svg>'
+};
+
+/* ---------- helpers ---------- */
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmtTime = s => { s = Math.max(0, Math.floor(s || 0)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
+const fmtSize = b => b >= 1e9 ? (b / 1e9).toFixed(1) + ' ГБ' : b >= 1e6 ? Math.round(b / 1e6) + ' МБ' : Math.round(b / 1e3) + ' КБ';
+const lsGet = k => { try { return localStorage.getItem(k); } catch (e) { return null; } };
+const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
+let toastTimer;
+function toast(msg, ms = 2600) {
+  const t = $('#toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), ms);
+}
+
+/* ---------- IndexedDB ---------- */
+let db;
+function openDB() {
+  return new Promise((res, rej) => {
+    const r = indexedDB.open('player-db', 1);
+    r.onupgradeneeded = () => {
+      const d = r.result;
+      d.createObjectStore('meta', { keyPath: 'id', autoIncrement: true });
+      d.createObjectStore('files');
+      d.createObjectStore('covers');
+    };
+    r.onsuccess = () => res(r.result);
+    r.onerror = () => rej(r.error);
+  });
+}
+const getAllMeta = () => new Promise((res, rej) => { const r = db.transaction('meta').objectStore('meta').getAll(); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); });
+const getByKey = (store, id) => new Promise((res, rej) => { const r = db.transaction(store).objectStore(store).get(id); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); });
+function addTrack(meta, file, cover) {
+  return new Promise((res, rej) => {
+    const t = db.transaction(['meta', 'files', 'covers'], 'readwrite');
+    const r = t.objectStore('meta').add(meta);
+    r.onsuccess = () => {
+      meta.id = r.result;
+      t.objectStore('files').put(file, meta.id);
+      if (cover) t.objectStore('covers').put(cover, meta.id);
+    };
+    t.oncomplete = () => res(meta);
+    t.onerror = t.onabort = () => rej(t.error || new Error('db'));
+  });
+}
+function deleteTrack(id) {
+  return new Promise((res, rej) => {
+    const t = db.transaction(['meta', 'files', 'covers'], 'readwrite');
+    t.objectStore('meta').delete(id); t.objectStore('files').delete(id); t.objectStore('covers').delete(id);
+    t.oncomplete = () => res(); t.onerror = t.onabort = () => rej(t.error);
+  });
+}
+
+/* ---------- tag reading (ID3v2 for mp3, MP4 atoms for m4a) ---------- */
+// <tags>
+const latin1 = u8 => { let s = ''; for (let i = 0; i < u8.length; i++) s += String.fromCharCode(u8[i]); return s; };
+function dec(label, u8) { try { return new TextDecoder(label).decode(u8); } catch (e) { return latin1(u8); } }
+function decodeId3Text(d) {
+  if (!d.length) return '';
+  const enc = d[0], body = d.subarray(1);
+  let s;
+  if (enc === 0) s = dec('windows-1251', body);
+  else if (enc === 1) {
+    if (body[0] === 0xFE && body[1] === 0xFF) s = dec('utf-16be', body.subarray(2));
+    else if (body[0] === 0xFF && body[1] === 0xFE) s = dec('utf-16le', body.subarray(2));
+    else s = dec('utf-16le', body);
+  } else if (enc === 2) s = dec('utf-16be', body);
+  else s = dec('utf-8', body);
+  return s.replace(/\u0000.*$/s, '').trim();
+}
+function parseApic(d) {
+  const enc = d[0]; let p = 1;
+  const me = d.indexOf(0, p); if (me < 0) return null;
+  let mime = latin1(d.subarray(p, me)); p = me + 1;
+  p++; // picture type
+  if (enc === 1 || enc === 2) { while (p + 1 < d.length && !(d[p] === 0 && d[p + 1] === 0)) p += 2; p += 2; }
+  else { while (p < d.length && d[p] !== 0) p++; p++; }
+  if (p >= d.length) return null;
+  if (!mime.includes('/')) mime = 'image/jpeg';
+  return new Blob([d.slice(p)], { type: mime });
+}
+async function readId3(file) {
+  const out = {};
+  const head = new Uint8Array(await file.slice(0, 10).arrayBuffer());
+  if (!(head[0] === 0x49 && head[1] === 0x44 && head[2] === 0x33)) return out;
+  const ver = head[3];
+  if (ver !== 3 && ver !== 4) return out;
+  const size = ((head[6] & 0x7f) << 21) | ((head[7] & 0x7f) << 14) | ((head[8] & 0x7f) << 7) | (head[9] & 0x7f);
+  const buf = new Uint8Array(await file.slice(10, 10 + Math.min(size, 12 * 1024 * 1024)).arrayBuffer());
+  let p = 0;
+  if (head[5] & 0x40) { // extended header
+    const es = ver === 4 ? ((buf[0] & 0x7f) << 21) | ((buf[1] & 0x7f) << 14) | ((buf[2] & 0x7f) << 7) | (buf[3] & 0x7f)
+                         : (buf[0] * 16777216) + (buf[1] << 16) + (buf[2] << 8) + buf[3] + 4;
+    p = es;
+  }
+  while (p + 10 <= buf.length) {
+    const id = latin1(buf.subarray(p, p + 4));
+    if (!/^[A-Z0-9]{4}$/.test(id)) break;
+    const fs = ver === 4 ? ((buf[p + 4] & 0x7f) << 21) | ((buf[p + 5] & 0x7f) << 14) | ((buf[p + 6] & 0x7f) << 7) | (buf[p + 7] & 0x7f)
+                         : (buf[p + 4] * 16777216) + (buf[p + 5] << 16) + (buf[p + 6] << 8) + buf[p + 7];
+    if (fs <= 0 || p + 10 + fs > buf.length) break;
+    const data = buf.subarray(p + 10, p + 10 + fs);
+    if (id === 'TIT2') out.title = decodeId3Text(data);
+    else if (id === 'TPE1') out.artist = decodeId3Text(data);
+    else if (id === 'TALB') out.album = decodeId3Text(data);
+    else if (id === 'APIC' && !out.pic) out.pic = parseApic(data);
+    p += 10 + fs;
+  }
+  return out;
+}
+function walkAtoms(buf, start, end, cb) {
+  const dv = new DataView(buf.buffer, buf.byteOffset, buf.byteLength);
+  let p = start;
+  while (p + 8 <= end) {
+    let size = dv.getUint32(p); const type = latin1(buf.subarray(p + 4, p + 8)); let hdr = 8;
+    if (size === 1) { size = Number(dv.getBigUint64(p + 8)); hdr = 16; }
+    else if (size === 0) size = end - p;
+    if (size < hdr || p + size > end) break;
+    cb(type, p + hdr, p + size);
+    p += size;
+  }
+}
+async function readMp4(file) {
+  const out = {};
+  // locate the 'moov' atom among top-level atoms
+  let off = 0, moov = null;
+  while (off + 8 <= file.size) {
+    const h = new DataView(await file.slice(off, off + 16).arrayBuffer());
+    let size = h.getUint32(0); const type = latin1(new Uint8Array(h.buffer, 4, 4));
+    let hdr = 8;
+    if (size === 1) { size = Number(h.getBigUint64(8)); hdr = 16; } else if (size === 0) size = file.size - off;
+    if (size < hdr) break;
+    if (type === 'moov') { moov = [off + hdr, off + size]; break; }
+    off += size;
+  }
+  if (!moov || moov[1] - moov[0] > 24 * 1024 * 1024) return out;
+  const buf = new Uint8Array(await file.slice(moov[0], moov[1]).arrayBuffer());
+  walkAtoms(buf, 0, buf.length, (t, s, e) => {
+    if (t !== 'udta') return;
+    walkAtoms(buf, s, e, (t2, s2, e2) => {
+      if (t2 !== 'meta') return;
+      walkAtoms(buf, s2 + 4, e2, (t3, s3, e3) => {
+        if (t3 !== 'ilst') return;
+        walkAtoms(buf, s3, e3, (tag, ts, te) => {
+          walkAtoms(buf, ts, te, (t4, ds, de) => {
+            if (t4 !== 'data') return;
+            const val = buf.subarray(ds + 8, de);
+            if (tag === '©nam') out.title = dec('utf-8', val).trim();
+            else if (tag === '©ART' || (tag === 'aART' && !out.artist)) out.artist = dec('utf-8', val).trim();
+            else if (tag === '©alb') out.album = dec('utf-8', val).trim();
+            else if (tag === 'covr' && !out.pic) out.pic = new Blob([val.slice()], { type: val[0] === 0x89 ? 'image/png' : 'image/jpeg' });
+          });
+        });
+      });
+    });
+  });
+  return out;
+}
+async function readTags(file) {
+  try {
+    const ext = (file.name.split('.').pop() || '').toLowerCase();
+    if (ext === 'm4a' || ext === 'mp4') return await readMp4(file);
+    if (ext === 'mp3') return await readId3(file);
+    // unknown extension: try ID3, then MP4
+    const r = await readId3(file);
+    if (r.title || r.artist) return r;
+    return await readMp4(file);
+  } catch (e) { return {}; }
+}
+// </tags>
+
+async function makeImages(blob) {
+  // returns { thumb, cover } as data URLs (small JPEGs)
+  try {
+    const bmp = await createImageBitmap(blob);
+    const draw = size => {
+      const c = document.createElement('canvas'); c.width = c.height = size;
+      const x = c.getContext('2d');
+      const s = Math.min(bmp.width, bmp.height);
+      x.drawImage(bmp, (bmp.width - s) / 2, (bmp.height - s) / 2, s, s, 0, 0, size, size);
+      return c.toDataURL('image/jpeg', size > 200 ? 0.82 : 0.7);
+    };
+    const r = { thumb: draw(96), cover: draw(480) };
+    if (bmp.close) bmp.close();
+    return r;
+  } catch (e) { return {}; }
+}
+function probeDuration(file) {
+  return new Promise(res => {
+    const a = new Audio(); a.preload = 'metadata';
+    const u = URL.createObjectURL(file);
+    let done = false;
+    const fin = v => { if (done) return; done = true; URL.revokeObjectURL(u); a.removeAttribute('src'); res(v); };
+    a.onloadedmetadata = () => fin(isFinite(a.duration) ? a.duration : 0);
+    a.onerror = () => fin(0);
+    setTimeout(() => fin(0), 8000);
+    a.src = u;
+  });
+}
+const MIME = { mp3: 'audio/mpeg', m4a: 'audio/mp4', aac: 'audio/aac', flac: 'audio/flac', wav: 'audio/wav', aiff: 'audio/aiff', aif: 'audio/aiff', caf: 'audio/x-caf', ogg: 'audio/ogg', opus: 'audio/ogg' };
+
+/* ---------- library state ---------- */
+let tracks = [];
+const byId = id => tracks.find(t => t.id === id);
+
+function visibleTracks() {
+  const q = $('#q').value.trim().toLowerCase();
+  let a = tracks.filter(t => !q || (t.title + ' ' + t.artist).toLowerCase().includes(q));
+  const s = $('#sort').value;
+  if (s === 'title') a.sort((x, y) => x.title.localeCompare(y.title, 'ru'));
+  else if (s === 'artist') a.sort((x, y) => (x.artist || '~').localeCompare(y.artist || '~', 'ru') || x.title.localeCompare(y.title, 'ru'));
+  else a.sort((x, y) => y.added - x.added);
+  return a;
+}
+function thumbHTML(t) { return t && t.thumb ? `<img src="${t.thumb}" alt="">` : ICON.note; }
+function render() {
+  const a = visibleTracks();
+  $('#empty').style.display = tracks.length ? 'none' : 'block';
+  document.querySelector('.toolbar').style.display = tracks.length ? 'flex' : 'none';
+  document.querySelector('.actions').style.display = tracks.length ? 'flex' : 'none';
+  $('#list').innerHTML = a.map(t => `<div class="row${t.id === curId ? ' cur' : ''}" data-id="${t.id}">
+    <div class="th">${thumbHTML(t)}</div>
+    <div class="meta"><div class="t">${esc(t.title)}</div><div class="a">${esc(t.artist || 'Неизвестный исполнитель')}</div></div>
+    <div class="dur">${t.duration ? fmtTime(t.duration) : ''}</div>
+    <button class="more" data-more="${t.id}" aria-label="Меню">${ICON.more}</button></div>`).join('');
+  updateStats();
+}
+async function updateStats() {
+  const total = tracks.reduce((s, t) => s + (t.size || 0), 0);
+  let s = tracks.length ? `${tracks.length} ${plural(tracks.length)} · ${fmtSize(total)}` : '';
+  try {
+    if (navigator.storage && navigator.storage.estimate) {
+      const e = await navigator.storage.estimate();
+      if (e.quota) s += (s ? ' · ' : '') + `доступно ~${fmtSize(Math.max(0, e.quota - e.usage))}`;
+    }
+  } catch (e) {}
+  $('#stats').textContent = s;
+}
+function plural(n) { const a = n % 10, b = n % 100; return a === 1 && b !== 11 ? 'трек' : (a >= 2 && a <= 4 && (b < 12 || b > 14)) ? 'трека' : 'треков'; }
+
+/* ---------- import ---------- */
+let importing = false;
+async function importFiles(fileList) {
+  if (importing) return;
+  importing = true;
+  const files = [...fileList];
+  let added = 0, skipped = 0, failed = 0;
+  for (let i = 0; i < files.length; i++) {
+    const f = files[i];
+    toast(`Добавляю ${i + 1} из ${files.length}…`, 60000);
+    if (tracks.some(t => t.fname === f.name && t.size === f.size)) { skipped++; continue; }
+    try {
+      const ext = (f.name.split('.').pop() || '').toLowerCase();
+      const tags = await readTags(f);
+      const duration = await probeDuration(f);
+      let title = (tags.title || '').trim(), artist = (tags.artist || '').trim();
+      if (!title) {
+        const base = f.name.replace(/\.[^.]+$/, '');
+        const m = base.match(/^(.+?)\s+[-–—]\s+(.+)$/);
+        if (m && !artist) { artist = m[1].trim(); title = m[2].trim(); } else title = base;
+      }
+      const imgs = tags.pic ? await makeImages(tags.pic) : {};
+      const blob = f.type ? f : f.slice(0, f.size, MIME[ext] || 'audio/mpeg');
+      const meta = { title, artist, album: tags.album || '', duration, size: f.size, fname: f.name, added: Date.now() + i, thumb: imgs.thumb || '' };
+      await addTrack(meta, blob, imgs.cover || null);
+      tracks.push(meta); added++;
+    } catch (e) {
+      failed++;
+      if (e && (e.name === 'QuotaExceededError' || (e.message || '').toLowerCase().includes('quota'))) { toast('Не хватает места на телефоне', 4000); break; }
+    }
+  }
+  importing = false;
+  render();
+  try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) {}
+  let msg = added ? `Добавлено: ${added}` : 'Ничего не добавлено';
+  if (skipped) msg += ` · уже были: ${skipped}`;
+  if (failed) msg += ` · ошибок: ${failed}`;
+  toast(msg, 3500);
+}
+$('#file').addEventListener('change', e => { const fl = e.target.files; if (fl && fl.length) importFiles(fl).finally(() => { e.target.value = ''; }); });
+
+/* ---------- player ---------- */
+const audio = new Audio();
+audio.preload = 'auto';
+audio.setAttribute('playsinline', '');
+let curId = null, curUrl = null, base = [], order = [], pos = -1;
+let shuffleOn = false, repeatMode = 0; // 0 off, 1 all, 2 one
+let loadToken = 0, unlocked = false, errStreak = 0, seeking = false, lastPos = 0;
+let silentUrl = null;
+
+function silentWav() {
+  const n = 800, b = new Uint8Array(44 + n), dv = new DataView(b.buffer);
+  const w = (o, s) => { for (let i = 0; i < s.length; i++) b[o + i] = s.charCodeAt(i); };
+  w(0, 'RIFF'); dv.setUint32(4, 36 + n, true); w(8, 'WAVE'); w(12, 'fmt '); dv.setUint32(16, 16, true);
+  dv.setUint16(20, 1, true); dv.setUint16(22, 1, true); dv.setUint32(24, 8000, true); dv.setUint32(28, 8000, true);
+  dv.setUint16(32, 1, true); dv.setUint16(34, 8, true); w(36, 'data'); dv.setUint32(40, n, true); b.fill(128, 44);
+  return URL.createObjectURL(new Blob([b], { type: 'audio/wav' }));
+}
+// iOS only lets playback start from a tap; "unlock" the element once so later track changes work on their own.
+function unlockAudio() {
+  if (unlocked) return;
+  unlocked = true;
+  try { silentUrl = silentWav(); audio.src = silentUrl; audio.play().catch(() => {}); } catch (e) {}
+}
+function shuffled(ids, first) {
+  const rest = ids.filter(x => x !== first);
+  for (let i = rest.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [rest[i], rest[j]] = [rest[j], rest[i]]; }
+  return first != null && ids.includes(first) ? [first, ...rest] : rest;
+}
+function startQueue(ids, startId) {
+  if (!ids.length) return;
+  unlockAudio();
+  base = ids.slice();
+  order = shuffleOn ? shuffled(base, startId) : base.slice();
+  pos = startId != null ? order.indexOf(startId) : 0;
+  if (pos < 0) pos = 0;
+  loadAndPlay(order[pos]);
+}
+async function loadAndPlay(id) {
+  const meta = byId(id); if (!meta) return;
+  const token = ++loadToken;
+  curId = id;
+  showMeta(meta, null);
+  let file;
+  try { file = await getByKey('files', id); } catch (e) {}
+  if (token !== loadToken) return;
+  if (!file) { toast('Файл не найден в памяти'); return; }
+  if (curUrl) URL.revokeObjectURL(curUrl);
+  curUrl = URL.createObjectURL(file);
+  audio.src = curUrl;
+  audio.play().catch(() => {});
+  getByKey('covers', id).then(c => { if (token === loadToken) showMeta(meta, c || null); }).catch(() => {});
+  render();
+}
+function showMeta(meta, cover) {
+  $('#mini').classList.add('show');
+  $('#miniT').textContent = meta.title; $('#miniA').textContent = meta.artist || 'Неизвестный исполнитель';
+  $('#miniTh').innerHTML = thumbHTML(meta);
+  $('#fT').textContent = meta.title; $('#fA').textContent = meta.artist || 'Неизвестный исполнитель';
+  $('#cover').innerHTML = cover ? `<img src="${cover}" alt="">` : (meta.thumb ? `<img src="${meta.thumb}" alt="">` : ICON.note);
+  document.title = meta.title;
+  if ('mediaSession' in navigator) {
+    try {
+      navigator.mediaSession.metadata = new MediaMetadata({
+        title: meta.title, artist: meta.artist || '', album: meta.album || '',
+        artwork: (cover || meta.thumb) ? [{ src: cover || meta.thumb, sizes: cover ? '480x480' : '96x96', type: 'image/jpeg' }] : []
+      });
+    } catch (e) {}
+  }
+}
+function next(auto) {
+  if (!order.length) return;
+  if (auto && repeatMode === 2) { audio.currentTime = 0; audio.play().catch(() => {}); return; }
+  let p = pos + 1;
+  if (p >= order.length) {
+    if (repeatMode === 1 || !auto) p = 0;
+    else { audio.pause(); audio.currentTime = 0; return; }
+  }
+  pos = p; loadAndPlay(order[pos]);
+}
+function prev() {
+  if (!order.length) return;
+  if (audio.currentTime > 3) { audio.currentTime = 0; return; }
+  pos = (pos - 1 + order.length) % order.length; loadAndPlay(order[pos]);
+}
+function toggle() {
+  if (!curId) return;
+  if (audio.paused) audio.play().catch(() => toast('Не удалось начать воспроизведение')); else audio.pause();
+}
+function setShuffle(on) {
+  shuffleOn = on;
+  if (order.length && curId != null) {
+    if (on) { order = shuffled(base, curId); pos = 0; }
+    else { order = base.slice(); pos = Math.max(0, order.indexOf(curId)); }
+  }
+  updateButtons(); lsSet('shuffle', on ? '1' : '0');
+}
+function setRepeat(m) { repeatMode = m; updateButtons(); lsSet('repeat', String(m)); }
+
+function updateButtons() {
+  const playing = !audio.paused;
+  $('#miniPlay').innerHTML = playing ? ICON.pause : ICON.play;
+  $('#bPlay').innerHTML = playing ? ICON.pause : ICON.play;
+  $('#bShuffle').innerHTML = ICON.shuffle;
+  $('#bShuffle').classList.toggle('on', shuffleOn);
+  $('#bRepeat').classList.toggle('on', repeatMode > 0);
+  $('#bRepeat').innerHTML = repeatMode === 2 ? ICON.repeat1 : ICON.repeat;
+  if ('mediaSession' in navigator) navigator.mediaSession.playbackState = playing ? 'playing' : 'paused';
+}
+function updatePosition(force) {
+  const d = audio.duration, c = audio.currentTime;
+  if (isFinite(d) && d > 0) {
+    const pct = (c / d) * 100;
+    $('#miniProg').style.width = pct + '%';
+    if (!seeking) { const sk = $('#seek'); sk.value = Math.round(c / d * 1000); sk.style.setProperty('--p', pct + '%'); $('#tCur').textContent = fmtTime(c); }
+    $('#tDur').textContent = fmtTime(d);
+    if ('mediaSession' in navigator && navigator.mediaSession.setPositionState && (force || Math.abs(c - lastPos) >= 1)) {
+      lastPos = c;
+      try { navigator.mediaSession.setPositionState({ duration: d, playbackRate: audio.playbackRate || 1, position: Math.min(c, d) }); } catch (e) {}
+    }
+  }
+}
+audio.addEventListener('play', () => { errStreak = 0; updateButtons(); });
+audio.addEventListener('pause', updateButtons);
+audio.addEventListener('timeupdate', () => updatePosition(false));
+audio.addEventListener('loadedmetadata', () => updatePosition(true));
+audio.addEventListener('seeked', () => updatePosition(true));
+audio.addEventListener('ended', () => { if (audio.src === silentUrl) return; next(true); });
+audio.addEventListener('error', () => {
+  if (!curId || audio.src === silentUrl) return;
+  toast('Не удалось воспроизвести этот файл');
+  if (++errStreak < 3 && order.length > 1) next(true);
+});
+
+if ('mediaSession' in navigator) {
+  const set = (a, f) => { try { navigator.mediaSession.setActionHandler(a, f); } catch (e) {} };
+  set('play', () => audio.play().catch(() => {}));
+  set('pause', () => audio.pause());
+  set('previoustrack', prev);
+  set('nexttrack', () => next(false));
+  set('seekto', d => { if (d.seekTime != null) { audio.currentTime = d.seekTime; updatePosition(true); } });
+  set('seekbackward', d => { audio.currentTime = Math.max(0, audio.currentTime - (d.seekOffset || 10)); });
+  set('seekforward', d => { audio.currentTime = Math.min(audio.duration || 1e9, audio.currentTime + (d.seekOffset || 10)); });
+}
+
+/* ---------- UI wiring ---------- */
+$('#playAll').innerHTML = ICON.play.replace('<svg', '<svg width="18" height="18"') + ' Играть';
+$('#shuffleAll').innerHTML = ICON.shuffle.replace('<svg', '<svg width="18" height="18"') + ' Перемешать';
+$('#emptyIcon').innerHTML = ICON.note;
+$('#fclose').innerHTML = ICON.down;
+$('#miniNext').innerHTML = ICON.next;
+$('#bPrev').innerHTML = ICON.prev; $('#bNext').innerHTML = ICON.next;
+
+$('#playAll').onclick = () => { shuffleOn = false; updateButtons(); const ids = visibleTracks().map(t => t.id); startQueue(ids, ids[0]); };
+$('#shuffleAll').onclick = () => { shuffleOn = true; updateButtons(); startQueue(visibleTracks().map(t => t.id), null); };
+$('#list').addEventListener('click', e => {
+  const more = e.target.closest('[data-more]');
+  if (more) { openSheet(Number(more.dataset.more)); return; }
+  const row = e.target.closest('.row'); if (!row) return;
+  const id = Number(row.dataset.id);
+  startQueue(visibleTracks().map(t => t.id), id);
+});
+$('#q').addEventListener('input', render);
+$('#sort').addEventListener('change', () => { lsSet('sort', $('#sort').value); render(); });
+$('#miniPlay').onclick = e => { e.stopPropagation(); toggle(); };
+$('#miniNext').onclick = e => { e.stopPropagation(); next(false); };
+$('#miniOpen').onclick = () => $('#full').classList.add('open');
+$('#miniTh').onclick = () => $('#full').classList.add('open');
+$('#fclose').onclick = () => $('#full').classList.remove('open');
+$('#bPlay').onclick = toggle;
+$('#bNext').onclick = () => next(false);
+$('#bPrev').onclick = prev;
+$('#bShuffle').onclick = () => setShuffle(!shuffleOn);
+$('#bRepeat').onclick = () => setRepeat((repeatMode + 1) % 3);
+const sk = $('#seek');
+sk.addEventListener('pointerdown', () => { seeking = true; });
+sk.addEventListener('input', () => {
+  const d = audio.duration; if (!isFinite(d)) return;
+  sk.style.setProperty('--p', sk.value / 10 + '%'); $('#tCur').textContent = fmtTime(sk.value / 1000 * d);
+});
+sk.addEventListener('change', () => {
+  const d = audio.duration; if (isFinite(d)) audio.currentTime = sk.value / 1000 * d;
+  seeking = false; updatePosition(true);
+});
+sk.addEventListener('pointerup', () => { seeking = false; });
+sk.addEventListener('pointercancel', () => { seeking = false; });
+
+/* track menu */
+function openSheet(id) {
+  const t = byId(id); if (!t) return;
+  $('#sheet').innerHTML = `<div class="sh-title">${esc(t.title)}</div><div class="sh-sub">${esc(t.artist || 'Неизвестный исполнитель')} · ${fmtSize(t.size || 0)}</div>
+    <button data-act="next">Играть следующим</button>
+    <button data-act="delete" class="danger">Удалить с телефона</button>
+    <button data-act="cancel">Отмена</button>`;
+  $('#sheet').dataset.id = id;
+  $('#sheetbg').classList.add('show');
+}
+function closeSheet() { $('#sheetbg').classList.remove('show'); }
+$('#sheetbg').addEventListener('click', async e => {
+  if (e.target === $('#sheetbg')) { closeSheet(); return; }
+  const b = e.target.closest('button[data-act]'); if (!b) return;
+  const id = Number($('#sheet').dataset.id); const act = b.dataset.act;
+  closeSheet();
+  if (act === 'next') {
+    if (!order.length) { startQueue([id], id); return; }
+    order = order.filter(x => x !== id); base = base.filter(x => x !== id);
+    const cp = Math.max(0, order.indexOf(curId));
+    order.splice(cp + 1, 0, id); pos = cp;
+    if (!base.includes(id)) base.push(id);
+    toast('Сыграет следующим');
+  } else if (act === 'delete') {
+    try { await deleteTrack(id); } catch (e) { toast('Не удалось удалить'); return; }
+    tracks = tracks.filter(t => t.id !== id);
+    order = order.filter(x => x !== id); base = base.filter(x => x !== id);
+    if (curId === id) {
+      if (order.length) { pos = Math.min(pos, order.length - 1); loadAndPlay(order[pos]); }
+      else { curId = null; loadToken++; audio.pause(); audio.removeAttribute('src'); $('#mini').classList.remove('show'); $('#full').classList.remove('open'); updateButtons(); }
+    } else pos = Math.max(0, order.indexOf(curId));
+    render(); toast('Удалено');
+  }
+});
+
+/* ---------- start ---------- */
+(async function init() {
+  const sort = lsGet('sort'); if (sort) $('#sort').value = sort;
+  shuffleOn = lsGet('shuffle') === '1'; repeatMode = Number(lsGet('repeat') || 0);
+  updateButtons();
+  const ios = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const standalone = navigator.standalone || (window.matchMedia && matchMedia('(display-mode: standalone)').matches);
+  if (ios && !standalone && lsGet('tipx') !== '1') $('#tip').classList.add('show');
+  $('#tipx').onclick = () => { $('#tip').classList.remove('show'); lsSet('tipx', '1'); };
+  try {
+    db = await openDB();
+    tracks = await getAllMeta();
+  } catch (e) {
+    toast('Не удалось открыть хранилище. Не используй приватный режим Safari.', 6000);
+  }
+  render();
+  try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) {}
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+})();
+</script>
+</body>
+</html>
