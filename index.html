@@ -109,6 +109,15 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;heigh
 .ctrls .main svg{width:36px;height:36px}
 .ctrls .on{color:var(--accent)}
 .ctrls .sm svg{width:24px;height:24px}
+/* громкость: только на компьютере (на iPhone громкость задают кнопками телефона) */
+.vol{display:none;align-items:center;gap:4px}
+@media (hover:hover) and (pointer:fine){.vol{display:flex}}
+.vol .vbtn{width:36px;height:36px;display:grid;place-items:center;border-radius:50%;color:var(--muted)}
+.vol .vbtn:hover{color:var(--text)}
+.vol .vbtn svg{width:22px;height:22px}
+.vol input[type=range]{width:96px;height:24px;cursor:pointer}
+#full .vol{justify-content:center;margin-top:10px}
+#full .vol input[type=range]{width:220px}
 /* sheet */
 #sheetbg{position:fixed;inset:0;z-index:40;background:rgba(0,0,0,.55);display:none}
 #sheetbg.show{display:block}
@@ -156,6 +165,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;heigh
   <div class="mini-in">
     <div class="th" id="miniTh"></div>
     <div class="meta" id="miniOpen"><div class="t" id="miniT"></div><div class="a" id="miniA"></div></div>
+    <div class="vol" id="miniVol"></div>
     <button class="ibtn" id="miniPlay" aria-label="Пауза/воспроизведение"></button>
     <button class="ibtn" id="miniNext" aria-label="Следующий"></button>
     <div class="mini-prog" id="miniProg"></div>
@@ -177,6 +187,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;heigh
     <button class="ibtn" id="bNext" aria-label="Следующий"></button>
     <button class="ibtn sm" id="bRepeat" aria-label="Повтор"></button>
   </div>
+  <div class="vol" id="fullVol"></div>
 </div>
 
 <div id="sheetbg"><div id="sheet"></div></div>
@@ -202,6 +213,9 @@ const ICON = {
   repeat1:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 2l4 4-4 4M3 11V9a3 3 0 013-3h15M7 22l-4-4 4-4M21 13v2a3 3 0 01-3 3H3"/><text x="12" y="15.5" font-size="8" text-anchor="middle" fill="currentColor" stroke="none" font-weight="700">1</text></svg>',
   down:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 9l7 7 7-7"/></svg>',
   up:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 15l7-7 7 7"/></svg>',
+  vol2:'<svg viewBox="0 0 24 24"><path d="M3 9v6h4l5 4V5L7 9z"/><path d="M15.5 8.5a5 5 0 010 7M18 6a8.5 8.5 0 010 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
+  vol1:'<svg viewBox="0 0 24 24"><path d="M3 9v6h4l5 4V5L7 9z"/><path d="M15.5 8.5a5 5 0 010 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
+  mute:'<svg viewBox="0 0 24 24"><path d="M3 9v6h4l5 4V5L7 9z"/><path d="M16 9.5l5 5M21 9.5l-5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
   grip:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M5 8h14M5 12h14M5 16h14"/></svg>',
   swap:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4v14M7 18l-3-3M7 18l3-3M17 20V6M17 6l-3 3M17 6l3 3"/></svg>',
   more:'<svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>',
@@ -737,6 +751,26 @@ if ('mediaSession' in navigator) {
   set('seekbackward', d => { audio.currentTime = Math.max(0, audio.currentTime - (d.seekOffset || 10)); });
   set('seekforward', d => { audio.currentTime = Math.min(audio.duration || 1e9, audio.currentTime + (d.seekOffset || 10)); });
 }
+
+/* ---------- громкость (ПК) ---------- */
+let volume = parseFloat(lsGet('volume')); if (!(volume >= 0 && volume <= 1)) volume = 1;
+let muted = false;
+function applyVolume() {
+  const eff = muted ? 0 : volume;
+  audio.volume = eff;
+  document.querySelectorAll('.vol').forEach(v => {
+    const r = v.querySelector('.vrange'); r.value = Math.round(eff * 100); r.style.setProperty('--p', r.value + '%');
+    v.querySelector('.vbtn').innerHTML = eff === 0 ? ICON.mute : eff < 0.5 ? ICON.vol1 : ICON.vol2;
+  });
+}
+document.querySelectorAll('.vol').forEach(v => {
+  v.innerHTML = '<button class="vbtn" aria-label="Выключить звук"></button><input class="vrange" type="range" min="0" max="100" value="100" aria-label="Громкость">';
+  v.querySelector('.vrange').addEventListener('input', e => { volume = e.target.value / 100; muted = false; applyVolume(); lsSet('volume', String(volume)); });
+  v.querySelector('.vbtn').addEventListener('click', e => { e.stopPropagation(); if (volume === 0) { volume = 0.5; muted = false; lsSet('volume', '0.5'); } else muted = !muted; applyVolume(); });
+  v.addEventListener('wheel', e => { e.preventDefault(); volume = Math.max(0, Math.min(1, (muted ? 0 : volume) + (e.deltaY < 0 ? 0.05 : -0.05))); muted = false; applyVolume(); lsSet('volume', String(volume)); }, { passive: false });
+  v.addEventListener('click', e => e.stopPropagation());
+});
+applyVolume();
 
 /* ---------- UI wiring ---------- */
 $('#playAll').innerHTML = ICON.play.replace('<svg', '<svg width="18" height="18"') + ' Играть';
